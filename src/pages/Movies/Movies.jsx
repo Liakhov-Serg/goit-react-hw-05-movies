@@ -1,76 +1,66 @@
 import { useState, useEffect } from 'react';
-
-import { useParams, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { fetchMovieDetails } from '../../api';
+import { useSearchParams, useLocation } from 'react-router-dom';
+import { fetchByQuery } from '../../api';
 import {
-  Btn,
-  MovieContainer,
+  FormDiv,
+  Form,
+  Input,
+  Button,
+  MovieList,
+  MovieItem,
+  MovieLink,
   Img,
-  MovieInfo,
   MovieTitle,
-  AddInfo,
-  InfoList,
-  InfoLink,
 } from './Movies.styled';
 
-const MovieDetails = () => {
-  const [movie, setMovie] = useState(null);
-  const { movieId } = useParams();
+const Movies = () => {
+  const [query, setQuery] = useState('');
+  const [movies, setMovies] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams('');
   const location = useLocation();
-  const navigate = useNavigate();
-  const backLinkHref = location.state?.from ?? '/movies';
 
-  const { poster, title, releaseYear, userScore, overview, genres } =
-    movie ?? {};
+  const searchQuery = searchParams.get('query');
 
   useEffect(() => {
-    fetchMovieDetails(movieId).then(setMovie);
-  }, [movieId]);
+    searchQuery && fetchByQuery(searchQuery).then(setMovies);
+  }, [searchQuery]);
 
-  const backToMovies = () => {
-    navigate(backLinkHref);
+  const handleSubmit = async e => {
+    e.preventDefault();
+
+    const response = await fetchByQuery(query);
+    setMovies(response);
+    setSearchParams({ query });
+    setQuery('');
+  };
+  const onChange = e => {
+    setQuery(e.target.value);
   };
 
   return (
-    <div>
-      <Btn type="button" onClick={backToMovies}>
-        Back to movies
-      </Btn>
-      {movie && (
-        <div>
-          <MovieContainer>
-            <Img src={poster} alt={title} />
-            <MovieInfo>
-              <MovieTitle>
-                {title} ({releaseYear})
-              </MovieTitle>
-              <p>User Score: {userScore}%</p>
-              <h3>Overview</h3>
-              <p>{overview}</p>
-              <h3>Genres</h3>
-              <p>{genres.map(({ name }) => name).join(' ')}</p>
-            </MovieInfo>
-          </MovieContainer>
-
-          <AddInfo>Additional information</AddInfo>
-
-          <InfoList>
-            <li>
-              <InfoLink to={'cast'} state={{ from: location?.state?.from }}>
-                Cast
-              </InfoLink>
-            </li>
-            <li>
-              <InfoLink to={'reviews'} state={{ from: location?.state?.from }}>
-                Reviews
-              </InfoLink>
-            </li>
-          </InfoList>
-          <Outlet />
-        </div>
+    <>
+      <FormDiv>
+        <Form onSubmit={handleSubmit}>
+          <Input type="text" value={query} onChange={onChange} />
+          <Button type="submit">search</Button>
+        </Form>
+      </FormDiv>
+      {movies.length > 0 && (
+        <MovieList>
+          {movies.map(({ id, title, poster }) => (
+            <MovieItem key={id}>
+              <MovieLink to={`/movies/${id}`} state={{ from: location }}>
+                <Img src={poster} alt={title} />
+                <MovieTitle>
+                  <h3>{title}</h3>
+                </MovieTitle>
+              </MovieLink>
+            </MovieItem>
+          ))}
+        </MovieList>
       )}
-    </div>
+    </>
   );
 };
 
-export default MovieDetails;
+export default Movies;
